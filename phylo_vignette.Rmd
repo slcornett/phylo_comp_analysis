@@ -1,0 +1,136 @@
+---
+title: "Phylogenetic Comparative Analysis Package and Vignette"
+output: rmarkdown::html_vignette
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Phylogenetic Comparative Analysis Package and Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+*Collaborators: Savvy Cornett & Jyhreh Johnson*
+
+```{r}
+#source("~/Desktop/Applied-Data-Analysis/cornett-johnson_ADA_GroupProject/sonichedgehog/R/pcms_script.R")
+source("~/Documents/Documents/UT/class_folders/ada/cornett-johnson_ADA_GroupProject/sonichedgehog/R/pcms_script.R")
+```
+
+## Background
+Given all life on earth diverged from a common ancestor, we need a way to analyse those evolutionary relationships. We can do this by comparing the sequences--nucleotide for DNA and RNA, or amino acid (polypeptide) for protein--of genes from different species. This can be done with whole genomes or otherwise highly conserved genes in the genome to determine the evolutionary relationship of the species, or with just a single gene/protein from multiple species to determine the relationship and amount of conservation for just that gene/protein. These comparisons can be visualized as a phylogenetic tree, which uses relative branch lengths to indicate time since species diverged from their common ancestor based on the number of substitutions (silent/missense/nonsense mutations) within the sequence being compared. Phylogenetic Comparative Analysis or Phylogenetic Comparative Methods (PCMs) are a set of statistical methods used by biologist, geneticist, and anthropologists to analyze phylogenetic trees and track/present species traits (Pennell & Harmon, 2013).\
+
+## Introduction
+In this package, we have included a dataset for the Sonic Hedgehog vertebrate orthologs (SHH_orthologs.csv) from the NIH database. We also have two functions: one for making a phylogenetic tree, and the other for doing a phylogenetic scatterplot.\
+
+## Preliminaries
+Load in the necessary libraries for the package. 
+```{r Preliminaries, message=FALSE, warning=FALSE}
+require(devtools) # to make package
+require(usethis) # to make package
+require(roxygen2) # to make package
+require(withr) # to make package
+# for our package
+require(tidyverse)
+require(ape) #phylo
+require(ggplot2)
+require(phangorn)
+require(phytools) 
+#<<<<<<< HEAD
+#=======
+#>>>>>>> dcc95e63d8c822fe469a8c9a5de3ccc59019d629
+require(BiocManager) # to get packages from bioconductor (ie package not on CRAN)
+require(ggtree) # extension of ggplot to make phylo trees
+require(msa) # multiple sequence alignment
+```
+## Viewing the data\
+
+For this project, we have included an example dataset to use with our PCMs package, *SHH_orthologs_Carnivora* (sonic), sonic is a dataset of Sonic hedgehog (Shh) gene orthologs from species of order Carnivora, a group of placental mammals specialized in eating flesh. These orthologs were retrieved from NCBI gene database. Included in it are the following for each species, 25 total: GeneID, GeneSymbol, Scientific_name, Common_name, Description of the polymer molecule, RefSeq_Transcript_Accessions, RefSeq_Protein_Accessions, and Peptide_Sequences from the respective protein accession. Additionally, the amino acid (peptide) sequences for each species Shh is included in fasta format in the file SHH_Carnivora.fasta. This file is a more accessible way to use the peptide sequences from the sonic dataset as an example.
+
+```{r}
+#load in the data
+f_name <- "https://raw.githubusercontent.com/jyhrehjohnson/cornett-johnson_ADA_GroupProject/main/SHH_orthologs_Carnivora.csv"
+
+#use the function to read in the data and create the r dataset
+sonic <- read_file(f_name)
+
+# read in sequences from .fasta file
+fast_file <- "https://raw.githubusercontent.com/jyhrehjohnson/cornett-johnson_ADA_GroupProject/main/SHH_Carnivora.fasta"
+
+fast <- f_file(fast_file)
+```
+
+<<<<<<< HEAD
+## Creating Amino Acids (Polypeptide)
+=======
+### **By Hand** Preparing Fasta data for phylogenetic analysis\
+For this example, we will be using the sonic fasta file included in this package (**SHH_Carnivora.fasta**).\
+**1. convert the .fasta file data to a string of amino acids (AA), i.e., a literal polypeptide chain in code.**\
+To do this, we first assign the link to the raw file to a value, then, using the `readAAStringSet()` function from the {Biostrings} package, convert the fasta file to an amino acid string set for each species included in the file (25 total). You can choose to keep the fasta format for the data with the `format = "fasta"` argument.
+```{r Read in the file}
+# read in sequences from .fasta file
+fas <- "https://raw.githubusercontent.com/jyhrehjohnson/cornett-johnson_ADA_GroupProject/main/SHH_Carnivora.fasta"
+#for reading multiple AA sequences from msa package
+file <- readAAStringSet(fas, format = "fasta", use.names = TRUE) # format: biostrings, AAString set
+```
+
+
+We can confirm our file was correctly converted using the base ***R*** `class()` function. The class should be "AAStringSet", attributed to the "Biostrings" package.
+```{r check class}
+class(file)
+# OUTPUT SHOULD BE THE BELOW:
+# "AAStringSet"
+# attr(,"package")
+# "Biostrings"
+```
+**2. Multiple Sequence Alignment (MSA)**\
+We next need to conduct a multiple sequence alignment (msa)--the alignment of 3 or more sequences of genetic material (DNA, RNA, or protein) to determine homology and evolutionary relationships--on our Shh amino acid sequences. We can do this using the `msa()` function from the {msa} package (package available from BioConductor; Bodenhofer et al., 2015). This function gives us the option to use one of three different algorithms, depending on the type of sequences being aligned. We will use the *MUSCLE* algorithm for our Shh protein sequences as this algorithm is especially good with proteins and our sequences are a medium/small size. Other algorithms options in the `msa()` function include *ClustalW* and *ClustalOmega*, both of which are good for all types of genetic material, especially those with medium to long sequences and many sequences being compared. You can learn more about multiple sequence alignments at the EMBL European Bioinformatics Institute's website: <https://www.ebi.ac.uk/Tools/msa/>.\
+In this function, we define the method as `method = c("Muscle")` since we are using the *MUSCLE* algorithm, and the type of sequence as `type = "protein`. The order argument refers to the order of the sequences in the output object. Here, the sequences will be ordered by how aligned they are then the input order (ie their order in the fasta file): `order = c("aligned", "input")`.
+```{r msa}
+# multiple sequence alignment from msa package 
+#align the fasta file using MUSCLE algorithm
+fas_msa <-  msa(file, method = c("Muscle"), type = "protein", order=c("aligned", "input")) 
+```
+
+to be continued (Savvy)
+```{r}
+fas_AAbin <- as.AAbin(fas_msa, show.aa = TRUE, check.names = TRUE) # #read aligned data, converting to AAbin
+fas_AAch <- as.character.AAbin(fas_AAbin) #converting AAbin to character strings
+fas_align <- as.alignment(fas_AAch)
+fas_AAmatrix <- as.matrix(fas_align) # converting alignment to matrix
+ # converting from AAbin to alignment format
+AAbin_labs <- as.matrix(labels(fas_AAbin)) # extraction of the species names
+fas_AAbin <- dist.aa(fas_AAbin)
+tree <- nj(fas_AAbin)
+
+ggt <-ggtree(tree, cex = 0.8, aes(color = branch.length)) +
+  scale_color_continuous(high='green',low='blue') +
+  geom_tiplab(align = TRUE, size = 4) +
+  geom_treescale(y = - 5, color = "coral4", fontsize = 4)
+ggt
+```
+
+
+## Creating Amino Acids (Polypeptide)
+>>>>>>> dcc95e63d8c822fe469a8c9a5de3ccc59019d629
+```{r}
+# pat <- pcms_AAtree(fast_file)
+```
+
+## Running PCMs
+
+## Plotting PCMs\
+**Plotting with ggtree**
+```{r}
+#input plot function and discuss plotting ^^
+```
+**Plotting with plotTree**
+```{r}
+pt <- plot_Tree(tree)
+```
+
+## Interpreting PCMs Plots
+
+## References\ 
+Pennell, M. W., & Harmon, L. J. (2013). An integrative view of phylogenetic comparative methods: Connections to population genetics, community ecology, and paleobiology: Integrative comparative methods. *Annals of the New York Academy of Sciences, 1289*(1), 90–105. <https://doi.org/10.1111/nyas.12157>\
+
+Toparslan, E., Karabag, K., & Bilge, U. (2020). A workflow with R: Phylogenetic analyses and visualizations using mitochondrial cytochrome b gene sequences. *PLOS ONE, 15*(12), e0243927. <https://doi.org/10.1371/journal.pone.0243927>\
+
+Yu, G., Smith, D. K., Zhu, H., Guan, Y., & Lam, T. T. (2017). ggtree: An r package for visualization and annotation of phylogenetic trees with their covariates and other associated data. *Methods in Ecology and Evolution, 8*(1), 28–36. <https://doi.org/10.1111/2041-210X.12628>\
